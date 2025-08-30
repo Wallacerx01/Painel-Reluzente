@@ -38,27 +38,27 @@ function Login() {
   };
 
   // --- RESET SENHA ---
-  const handleResetPassword = async () => {
-    if (!email) {
-      alert("Digite seu email para recuperar a senha.");
-      return;
-    }
+  // const handleResetPassword = async () => {
+  //   if (!email) {
+  //     alert("Digite seu email para recuperar a senha.");
+  //     return;
+  //   }
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/nova-senha`,
-      });
+  //   try {
+  //     const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  //       redirectTo: `${window.location.origin}/nova-senha`,
+  //     });
 
-      if (error) {
-        alert("Erro ao enviar email: " + error.message);
-      } else {
-        alert("Email de recuperação enviado! Verifique sua caixa de entrada.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Erro inesperado. Tente novamente.");
-    }
-  };
+  //     if (error) {
+  //       alert("Erro ao enviar email: " + error.message);
+  //     } else {
+  //       alert("Email de recuperação enviado! Verifique sua caixa de entrada.");
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert("Erro inesperado. Tente novamente.");
+  //   }
+  // };
 
   return (
     <main className="bg-[#B59275] w-screen h-screen flex flex-col justify-center items-center">
@@ -107,14 +107,14 @@ function Login() {
             {loading ? "Entrando..." : "Entrar"}
           </button>
 
-          <button
+          {/* <button
             type="button"
             className="cursor-pointer mt-2 text-gray-400 hover:text-gray-200
              hover:underline hover:scale-102 transition-all duration-200"
             onClick={handleResetPassword}
           >
             Esqueci minha senha
-          </button>
+          </button> */}
         </form>
       </section>
     </main>

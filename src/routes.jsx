@@ -11,7 +11,7 @@ function RoutesApp() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/<Painel-Reluzente>" element={<Login />} />
+        <Route path="/" element={<Login />} />
         <Route path="/painelpedidos" element={<PainelPedidos />} />
         <Route path="/addprodutos" element={<AddProdutos />} />
         <Route path="/meucardapio" element={<MeuCardapio />} />

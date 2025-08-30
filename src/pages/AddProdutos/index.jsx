@@ -2,6 +2,8 @@ import { useState } from "react";
 import supabase from "../../supabaseClient";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
+import Toastify from "toastify-js";
+import "toastify-js/src/toastify.css";
 
 function AddProdutos() {
   const [tipo, setTipo] = useState("pratos");
@@ -69,9 +71,22 @@ function AddProdutos() {
     const { error: insertError } = await supabase.from(tipo).insert([novoItem]);
 
     if (insertError) {
-      alert("Erro ao salvar: " + insertError.message);
+      Toastify({
+        text: "Erro ao salvar: " + insertError.message,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#ef4444" },
+      }).showToast();
     } else {
-      alert(`${tipo === "pratos" ? "Prato" : "Bebida"} salvo com sucesso!`);
+      Toastify({
+        text: `${tipo === "pratos" ? "Prato" : "Bebida"} salva com sucesso!`,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#008000" },
+      }).showToast();
+
       // Reset completo do formulário
       setNome("");
       setDescricao("");
