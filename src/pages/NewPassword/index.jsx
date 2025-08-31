@@ -1,62 +1,65 @@
 import { useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import supabase from "../../supabaseClient";
 import Toastify from "toastify-js";
 import "toastify-js/src/toastify.css";
 
 function NewPassword() {
-  const [searchParams] = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const token = searchParams.get("access_token"); // Token do link do email
-
   const handleNewPassword = async (e) => {
     e.preventDefault();
-    setMessage("");
     setLoading(true);
 
     if (password !== confirm) {
-      setMessage("⚠️ As senhas não conferem!");
+      Toastify({
+        text: "⚠️ As senhas não conferem!",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#ef4444" },
+      }).showToast();
       setLoading(false);
       return;
     }
 
     try {
-      const { error } = await supabase.auth.updateUser(
-        { password },
-        token ? { accessToken: token } : {}
-      );
+      const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
-        setMessage(
-          Toastify({
-            text: "Error: " + Error.message,
-            duration: 3000,
-            gravity: "top",
-            position: "right",
-            style: { background: "#ef4444" },
-          }).showToast()
-        );
+        Toastify({
+          text: "Erro: " + error.message,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: { background: "#ef4444" },
+        }).showToast();
       } else {
-        setMessage(
-          Toastify({
-            text: `✅ Senha redefinida com sucesso! Redirecionando...`,
-            duration: 3000,
-            gravity: "top",
-            position: "right",
-            style: { background: "#008000" },
-          }).showToast()
-        );
+        Toastify({
+          text: "✅ Senha redefinida com sucesso! Redirecionando...",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: { background: "#008000" },
+        }).showToast();
+
+        // 🔒 Dica de segurança: encerra sessão temporária
+        await supabase.auth.signOut();
 
         setTimeout(() => navigate("/login"), 2000);
       }
     } catch (err) {
-      setMessage("Erro inesperado. Tente novamente.");
       console.error(err);
+      Toastify({
+        text: "Erro inesperado. Tente novamente.",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#ef4444" },
+      }).showToast();
     } finally {
       setLoading(false);
     }
@@ -98,16 +101,6 @@ function NewPassword() {
             {loading ? "Atualizando..." : "Redefinir senha"}
           </button>
         </form>
-
-        {message && (
-          <p
-            className={`text-center font-semibold ${
-              message.includes("✅") ? "text-green-400" : "text-red-500"
-            }`}
-          >
-            {message}
-          </p>
-        )}
       </section>
     </main>
   );
