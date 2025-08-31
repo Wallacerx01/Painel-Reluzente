@@ -95,18 +95,21 @@ function Header() {
             <nav>
               <ul className="flex flex-col gap-4 text-lg">
                 <li>
-                  <Link to="/addprodutos" onClick={() => setMenuAberto(false)}>
+                  <Link
+                    to="/adicionar-produtos"
+                    onClick={() => setMenuAberto(false)}
+                  >
                     Adicionar produtos
                   </Link>
                 </li>
                 <li>
-                  <Link to="/meucardapio" onClick={() => setMenuAberto(false)}>
+                  <Link to="/meu-cardapio" onClick={() => setMenuAberto(false)}>
                     Meu cardápio
                   </Link>
                 </li>
                 <li>
                   <Link
-                    to="/painelpedidos"
+                    to="/painel-pedidos"
                     onClick={() => setMenuAberto(false)}
                   >
                     Painel de pedidos

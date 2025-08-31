@@ -81,7 +81,7 @@ function AddProdutos() {
       }).showToast();
     } else {
       Toastify({
-        text: `${tipo === "pratos" ? "Prato" : "Bebida"} salva com sucesso!`,
+        text: `${tipo === "pratos" ? "Prato" : "Bebida"} salvo com sucesso!`,
         duration: 3000,
         gravity: "top",
         position: "right",

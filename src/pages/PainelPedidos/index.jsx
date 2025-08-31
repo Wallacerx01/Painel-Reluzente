@@ -3,9 +3,9 @@ import supabase from "../../supabaseClient";
 import { Howl } from "howler";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
+import alertSound from "../../audio/alert.mp3";
 
-// Definindo o caminho do som uma vez
-const audioNovoPedidoSrc = "/src/assets/alert.mp3";
+const audioNovoPedidoSrc = alertSound;
 
 function PainelPedidos() {
   const [pedidos, setPedidos] = useState([]);
@@ -16,11 +16,18 @@ function PainelPedidos() {
   const pedidosAtuais = useRef(new Set());
   const somAtivoRef = useRef(somAtivo);
 
+  // Mantém o ref atualizado com o estado do som
   useEffect(() => {
     somAtivoRef.current = somAtivo;
   }, [somAtivo]);
 
-  // ---------------- Inicializa o som e o canal de escuta ----------------
+  const tocarSom = (ativo) => {
+    if (ativo && audioNovoPedido.current) {
+      audioNovoPedido.current.stop();
+      audioNovoPedido.current.play();
+    }
+  };
+
   useEffect(() => {
     if (!audioNovoPedido.current) {
       audioNovoPedido.current = new Howl({
@@ -30,16 +37,27 @@ function PainelPedidos() {
     }
 
     const fetchPedidos = async () => {
-      const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const { data, error } = await supabase
-        .from("pedidos")
-        .select("*")
-        .gte("created_at", umaHoraAtras)
-        .order("id", { ascending: false });
+      try {
+        const agora = new Date();
+        const umaHoraAtras = new Date(agora.getTime() - 60 * 60 * 1000);
+        const { data, error } = await supabase
+          .from("pedidos")
+          .select("*")
+          .order("id", { ascending: false });
 
-      if (error) console.error("Erro ao buscar pedidos:", error);
-      else setPedidos(data);
-      setLoading(false);
+        if (error) console.error("Erro ao buscar pedidos:", error);
+        else {
+          const pedidosRecentes = data.filter((pedido) => {
+            const createdAt = new Date(pedido.created_at);
+            return createdAt.getTime() >= umaHoraAtras.getTime();
+          });
+          setPedidos(pedidosRecentes);
+        }
+        setLoading(false);
+      } catch (err) {
+        console.error(err);
+        setLoading(false);
+      }
     };
 
     const escutarPedidos = async () => {
@@ -52,20 +70,20 @@ function PainelPedidos() {
           { event: "INSERT", schema: "public", table: "pedidos" },
           async (payload) => {
             const pedido = payload.new;
-            const umaHoraAtras = Date.now() - 60 * 60 * 1000;
+            const agora = new Date();
+            const umaHoraAtras = new Date(agora.getTime() - 60 * 60 * 1000);
+            const createdAt = new Date(pedido.created_at);
 
             if (
               !pedidosAtuais.current.has(pedido.numero || pedido.id) &&
-              new Date(pedido.created_at).getTime() >= umaHoraAtras
+              createdAt.getTime() >= umaHoraAtras.getTime()
             ) {
               pedidosAtuais.current.add(pedido.numero || pedido.id);
               setPedidos((prev) => [pedido, ...prev]);
               setStatusMsg("📦 Novo pedido recebido!");
 
-              // 🔊 toca som ao receber novo pedido
-              if (somAtivoRef.current && audioNovoPedido.current) {
-                audioNovoPedido.current.play();
-              }
+              // 🔊 Aqui usamos o ref atualizado
+              tocarSom(somAtivoRef.current);
 
               await imprimirPedido(pedido);
 
@@ -84,16 +102,13 @@ function PainelPedidos() {
     escutarPedidos();
   }, []);
 
-  // ---------------- BOTÃO ATIVAR SOM ----------------
   const ativarSom = () => {
-    if (!somAtivo) {
-      setSomAtivo(true);
+    const novoEstado = !somAtivo;
+    setSomAtivo(novoEstado);
+    if (novoEstado) {
       setStatusMsg("🔊 Som ativado com sucesso!");
-      if (audioNovoPedido.current) {
-        audioNovoPedido.current.play(); // 🔊 toca imediatamente
-      }
+      tocarSom(novoEstado); // toca imediatamente
     } else {
-      setSomAtivo(false);
       setStatusMsg("🔇 Som desativado!");
     }
 
@@ -147,14 +162,13 @@ function PainelPedidos() {
     await window.qz.print(config, data).catch((err) => console.error(err));
   };
 
-  // ---------------- LIMPAR PEDIDOS ANTIGOS A CADA 5 MIN ----------------
   useEffect(() => {
     const interval = setInterval(() => {
       const umaHoraAtras = Date.now() - 60 * 60 * 1000;
       setPedidos((prev) =>
         prev.filter((p) => new Date(p.created_at).getTime() >= umaHoraAtras)
       );
-    }, 5 * 60 * 1000);
+    }, 60 * 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -165,6 +179,13 @@ function PainelPedidos() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+  const formatarData = (data) => {
+    const d = new Date(data);
+    const dia = String(d.getDate()).padStart(2, "0");
+    const mes = String(d.getMonth() + 1).padStart(2, "0"); // meses começam do 0
+    const ano = String(d.getFullYear()).slice(-2); // pega os dois últimos dígitos
+    return `${dia}/${mes}/${ano}`;
   };
 
   return (
@@ -202,10 +223,17 @@ function PainelPedidos() {
                 key={pedido.id}
                 className="p-4 bg-white shadow rounded-lg border border-gray-200"
               >
-                <p>
-                  <span className="font-bold">🕒 Hora:</span>{" "}
-                  {formatarHora(pedido.created_at)}
-                </p>
+                {" "}
+                <div className="flex gap-10">
+                  <p>
+                    <span className="font-bold">🕒 Hora:</span>{" "}
+                    {formatarHora(pedido.created_at)}
+                  </p>
+                  <p>
+                    <span className="font-bold">📅 Data:</span>{" "}
+                    {formatarData(pedido.created_at)}
+                  </p>
+                </div>
                 <p>
                   <span className="font-bold">👤 Cliente:</span>{" "}
                   {pedido.cliente}
@@ -226,8 +254,6 @@ function PainelPedidos() {
                   <span className="font-bold">💳 Pagamento:</span>{" "}
                   {pedido.pagamento}
                 </p>
-
-                {/* 🔘 Botão Manual de Impressão */}
                 <button
                   onClick={() => imprimirPedido(pedido)}
                   className="mt-3 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
