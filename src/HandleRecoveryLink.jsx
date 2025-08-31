@@ -20,8 +20,11 @@ export default function HandleRecoveryLink() {
         .then(({ error }) => {
           if (error) {
             console.error("Erro ao setar sessão:", error);
+            // redireciona pra login se falhar
+            navigate("/login");
           } else {
-            navigate("/new-password"); // só redireciona se sessão OK
+            // sessão OK → vai pro new-password
+            navigate("/new-password");
           }
         });
     }
