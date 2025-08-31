@@ -70,7 +70,6 @@ function NewPassword() {
             required
             className="rounded-lg w-full p-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#B59275]"
           />
-
           <button
             type="submit"
             disabled={loading}

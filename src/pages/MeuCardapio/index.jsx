@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import supabase from "../../supabaseClient";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import Toastify from "toastify-js";
-import "toastify-js/src/toastify.css";
 
 function MeuCardapio() {
   const [cardapio, setCardapio] = useState([]);
@@ -11,9 +9,35 @@ function MeuCardapio() {
 
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const [form, setForm] = useState({ name: "", price: "", description: "" });
+  const [form, setForm] = useState({
+    name: "",
+    price: "",
+    description: "",
+    dias: [],
+  });
 
   const [confirmDelete, setConfirmDelete] = useState(null); // item a excluir
+
+  // ---------- MAPA DE DIAS ----------
+  const diaMap = {
+    Segunda: 1,
+    Terça: 2,
+    Quarta: 3,
+    Quinta: 4,
+    Sexta: 5,
+    Sábado: 6,
+    Domingo: 7,
+  };
+  const diasNomes = Object.keys(diaMap);
+
+  const handleDiaChange = (dia) => {
+    setForm((prev) => ({
+      ...prev,
+      dias: prev.dias.includes(dia)
+        ? prev.dias.filter((d) => d !== dia)
+        : [...prev.dias, dia],
+    }));
+  };
 
   useEffect(() => {
     buscarCardapio();
@@ -57,13 +81,6 @@ function MeuCardapio() {
       setConfirmDelete(null); // fecha modal
     } else {
       console.log("Erro ao excluir:", error.message);
-      Toastify({
-        text: "Erro ao salvar: " + insertError.message,
-        duration: 3000,
-        gravity: "top",
-        position: "right",
-        style: { background: "#ef4444" },
-      }).showToast();
     }
   };
 
@@ -74,19 +91,28 @@ function MeuCardapio() {
       name: item.name,
       price: item.price,
       description: item.description,
+      dias: item.dias
+        ? item.dias.map((n) => diasNomes.find((d) => diaMap[d] === n))
+        : [],
     });
     setShowModal(true);
   };
 
   // --------- SALVAR EDIÇÃO ---------
   const salvarEdicao = async () => {
+    const updateData = {
+      name: form.name,
+      price: parseFloat(form.price),
+      description: form.description,
+    };
+
+    if (editItem.tipo === "pratos") {
+      updateData.dias = form.dias.map((d) => diaMap[d]); // nomes -> números
+    }
+
     const { error } = await supabase
       .from(editItem.tipo)
-      .update({
-        name: form.name,
-        price: parseFloat(form.price),
-        description: form.description,
-      })
+      .update(updateData)
       .eq("id", editItem.id);
 
     if (!error) {
@@ -113,7 +139,9 @@ function MeuCardapio() {
   return (
     <div className="bg-[#B59275] min-h-screen text-white">
       <Header />
-      <h1 className="text-3xl font-bold text-center mt-5">Meu cardápio</h1>
+      <h1 className="text-3xl font-bold text-center mt-6 text-gray-800">
+        Meu cardápio
+      </h1>
 
       <ul>
         {cardapio.map((e) => (
@@ -189,6 +217,30 @@ function MeuCardapio() {
                 className="w-full p-2 border rounded"
               />
             </label>
+
+            {/* --- Checkboxes de dias (só para pratos) --- */}
+            {editItem?.tipo === "pratos" && (
+              <div className="mb-4">
+                <label className="block font-semibold mb-2">
+                  Dias disponíveis
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {diasNomes.map((dia) => (
+                    <label
+                      key={dia}
+                      className="flex items-center gap-2 text-sm bg-[#B59275] px-3 py-1 rounded-lg cursor-pointer hover:opacity-90"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.dias.includes(dia)}
+                        onChange={() => handleDiaChange(dia)}
+                      />
+                      {dia}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3">
               <button

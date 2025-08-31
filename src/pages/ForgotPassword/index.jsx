@@ -12,7 +12,7 @@ function ForgotPassword() {
     setLoading(true);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://painelreluzente.vercel.app/nova-senha",
+      redirectTo: "https://painelreluzente.vercel.app/new-password",
     });
 
     if (error) setMessage(error.message);
@@ -27,7 +27,6 @@ function ForgotPassword() {
         <h2 className="text-white text-2xl font-bold text-center">
           Esqueci minha senha
         </h2>
-
         <p className="text-gray-200 text-center">
           Digite seu email para receber um link de redefinição de senha.
         </p>
@@ -41,7 +40,6 @@ function ForgotPassword() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-
           <button
             type="submit"
             disabled={loading}

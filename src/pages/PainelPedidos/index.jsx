@@ -16,14 +16,12 @@ function PainelPedidos() {
   const pedidosAtuais = useRef(new Set());
   const somAtivoRef = useRef(somAtivo);
 
-  // Sincroniza o estado somAtivo com o ref
   useEffect(() => {
     somAtivoRef.current = somAtivo;
   }, [somAtivo]);
 
   // ---------------- Inicializa o som e o canal de escuta ----------------
   useEffect(() => {
-    // Inicializa o Howl apenas uma vez
     if (!audioNovoPedido.current) {
       audioNovoPedido.current = new Howl({
         src: [audioNovoPedidoSrc],
@@ -64,7 +62,7 @@ function PainelPedidos() {
               setPedidos((prev) => [pedido, ...prev]);
               setStatusMsg("📦 Novo pedido recebido!");
 
-              // 🔊 toca som ao receber novo pedido, usando o ref
+              // 🔊 toca som ao receber novo pedido
               if (somAtivoRef.current && audioNovoPedido.current) {
                 audioNovoPedido.current.play();
               }
@@ -84,17 +82,15 @@ function PainelPedidos() {
 
     fetchPedidos();
     escutarPedidos();
-  }, []); // Dependência vazia para rodar apenas uma vez
+  }, []);
 
-  // O restante do código pode permanecer o mesmo, mas movi a lógica para fora do useEffect para melhor organização.
-
+  // ---------------- BOTÃO ATIVAR SOM ----------------
   const ativarSom = () => {
     if (!somAtivo) {
       setSomAtivo(true);
       setStatusMsg("🔊 Som ativado com sucesso!");
       if (audioNovoPedido.current) {
-        audioNovoPedido.current.play();
-        audioNovoPedido.current.stop();
+        audioNovoPedido.current.play(); // 🔊 toca imediatamente
       }
     } else {
       setSomAtivo(false);
@@ -163,7 +159,6 @@ function PainelPedidos() {
     return () => clearInterval(interval);
   }, []);
 
-  // ---------------- FORMATAR HORA ----------------
   const formatarHora = (data) => {
     const d = new Date(data);
     return d.toLocaleTimeString("pt-BR", {
@@ -176,7 +171,7 @@ function PainelPedidos() {
     <main className="bg-[#F5F5F5] w-screen h-screen flex flex-col">
       <div>
         <Header />
-        <h1 className="text-3xl font-bold text-center mt-3">
+        <h1 className="text-3xl font-bold text-center mt-6 text-gray-800">
           Painel de Pedidos
         </h1>
         <div className="flex justify-end gap-4 mr-5">
@@ -231,6 +226,14 @@ function PainelPedidos() {
                   <span className="font-bold">💳 Pagamento:</span>{" "}
                   {pedido.pagamento}
                 </p>
+
+                {/* 🔘 Botão Manual de Impressão */}
+                <button
+                  onClick={() => imprimirPedido(pedido)}
+                  className="mt-3 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  🖨️ Imprimir Manualmente
+                </button>
               </li>
             ))}
           </ul>

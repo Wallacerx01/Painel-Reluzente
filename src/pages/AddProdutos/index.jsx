@@ -23,6 +23,7 @@ function AddProdutos() {
     Quinta: 4,
     Sexta: 5,
     Sábado: 6,
+    Domingo: 7,
   };
 
   const handleDiaChange = (dia) => {
@@ -188,6 +189,7 @@ function AddProdutos() {
                         "Quinta",
                         "Sexta",
                         "Sábado",
+                        "Domingo",
                       ].map((dia) => (
                         <label
                           key={dia}

@@ -6,17 +6,19 @@ import PainelPedidos from "./pages/PainelPedidos";
 import MeuCardapio from "./pages/MeuCardapio";
 import ForgotPassword from "./pages/ForgotPassword";
 import NewPassword from "./pages/NewPassword";
+import HorariosPainel from "./pages/HorariosPainel";
 
 function RoutesApp() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/painelpedidos" element={<PainelPedidos />} />
-        <Route path="/addprodutos" element={<AddProdutos />} />
-        <Route path="/meucardapio" element={<MeuCardapio />} />
-        <Route path="/newpassword" element={<NewPassword />} />
-        <Route path="/forgotpassword" element={<ForgotPassword />} />
+        <Route path="/painel-pedidos" element={<PainelPedidos />} />
+        <Route path="/adicionar-produtos" element={<AddProdutos />} />
+        <Route path="/meu-cardapio" element={<MeuCardapio />} />
+        <Route path="/new-password" element={<NewPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/horarios" element={<HorariosPainel />} />
 
         <Route path="*" element={<h2>Página não encontrada</h2>} />
       </Routes>

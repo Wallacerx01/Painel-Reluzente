@@ -6,6 +6,7 @@ import supabase from "../../supabaseClient";
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false); // ✅ Estado para mostrar/ocultar
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -27,7 +28,7 @@ function Login() {
       if (error) {
         setErrorMsg(error.message);
       } else if (data.user) {
-        navigate("/painelpedidos");
+        navigate("/painel-pedidos");
       }
     } catch (err) {
       setErrorMsg("Erro inesperado. Tente novamente.");
@@ -37,28 +38,9 @@ function Login() {
     }
   };
 
-  // --- RESET SENHA ---
-  // const handleResetPassword = async () => {
-  //   if (!email) {
-  //     alert("Digite seu email para recuperar a senha.");
-  //     return;
-  //   }
-
-  //   try {
-  //     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  //       redirectTo: `${window.location.origin}/nova-senha`,
-  //     });
-
-  //     if (error) {
-  //       alert("Erro ao enviar email: " + error.message);
-  //     } else {
-  //       alert("Email de recuperação enviado! Verifique sua caixa de entrada.");
-  //     }
-  //   } catch (err) {
-  //     console.error(err);
-  //     alert("Erro inesperado. Tente novamente.");
-  //   }
-  // };
+  const handleGoToForgotPassword = () => {
+    navigate("/forgot-password");
+  };
 
   return (
     <main className="bg-[#B59275] w-screen h-screen flex flex-col justify-center items-center">
@@ -80,14 +62,25 @@ function Login() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <input
-            type="password"
-            placeholder="Senha..."
-            className="rounded-lg w-full p-2 bg-white"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+
+          {/* Input de senha com "olho" */}
+          <div className="relative w-full">
+            <input
+              type={mostrarSenha ? "text" : "password"}
+              placeholder="Senha..."
+              className="rounded-lg w-full p-2 bg-white"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-2 text-gray-500"
+              onClick={() => setMostrarSenha(!mostrarSenha)}
+            >
+              {mostrarSenha ? "🙈" : "👁️"}
+            </button>
+          </div>
 
           {errorMsg && (
             <p className="text-red-500 font-semibold text-center">{errorMsg}</p>
@@ -107,14 +100,14 @@ function Login() {
             {loading ? "Entrando..." : "Entrar"}
           </button>
 
-          {/* <button
+          <button
             type="button"
             className="cursor-pointer mt-2 text-gray-400 hover:text-gray-200
              hover:underline hover:scale-102 transition-all duration-200"
-            onClick={handleResetPassword}
+            onClick={handleGoToForgotPassword}
           >
             Esqueci minha senha
-          </button> */}
+          </button>
         </form>
       </section>
     </main>
