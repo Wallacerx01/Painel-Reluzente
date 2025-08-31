@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import supabase from "../../supabaseClient";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
+import Toastify from "toastify-js";
+import "toastify-js/src/toastify.css";
 
 function MeuCardapio() {
   const [cardapio, setCardapio] = useState([]);
@@ -79,8 +81,21 @@ function MeuCardapio() {
     if (!error) {
       setCardapio(cardapio.filter((item) => item.id !== confirmDelete.id));
       setConfirmDelete(null); // fecha modal
+      Toastify({
+        text: `Excluido com sucesso!`,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#008000" },
+      }).showToast();
     } else {
-      console.log("Erro ao excluir:", error.message);
+      Toastify({
+        text: "Erro ao excluir: " + Error.message,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#ef4444" },
+      }).showToast();
     }
   };
 
@@ -119,8 +134,21 @@ function MeuCardapio() {
       setShowModal(false);
       setEditItem(null);
       buscarCardapio();
+      Toastify({
+        text: `Salvo com sucesso!`,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#008000" },
+      }).showToast();
     } else {
-      console.log("Erro ao salvar edição:", error.message);
+      Toastify({
+        text: "Erro ao salvar edição: " + Error.message,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: { background: "#ef4444" },
+      }).showToast();
     }
   };
 

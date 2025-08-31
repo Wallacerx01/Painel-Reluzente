@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import supabase from "../../supabaseClient";
+import Toastify from "toastify-js";
+import "toastify-js/src/toastify.css";
 
 function NewPassword() {
   const [searchParams] = useSearchParams();
@@ -30,9 +32,26 @@ function NewPassword() {
       );
 
       if (error) {
-        setMessage(error.message);
+        setMessage(
+          Toastify({
+            text: "Error: " + Error.message,
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            style: { background: "#ef4444" },
+          }).showToast()
+        );
       } else {
-        setMessage("✅ Senha redefinida com sucesso! Redirecionando...");
+        setMessage(
+          Toastify({
+            text: `✅ Senha redefinida com sucesso! Redirecionando...`,
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            style: { background: "#008000" },
+          }).showToast()
+        );
+
         setTimeout(() => navigate("/login"), 2000);
       }
     } catch (err) {

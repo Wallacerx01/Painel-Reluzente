@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import supabase from "../../supabaseClient";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
+import Toastify from "toastify-js";
+import "toastify-js/src/toastify.css";
 
 function PainelHorarios() {
   const [horarios, setHorarios] = useState([]);
@@ -17,7 +19,16 @@ function PainelHorarios() {
       .select("*")
       .order("id");
 
-    if (error) setStatusMsg("Erro ao carregar horários");
+    if (error)
+      setStatusMsg(
+        Toastify({
+          text: "Erro ao carregar horarios",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: { background: "#ef4444" },
+        }).showToast()
+      );
     else
       setHorarios(
         data.map((h) => ({
@@ -51,12 +62,28 @@ function PainelHorarios() {
       .eq("id", id);
 
     if (!error) {
-      setStatusMsg(`✅ Horário de ${editHorario.dia_semana} salvo!`);
+      setStatusMsg(
+        Toastify({
+          text: `✅ Horário de ${editHorario.dia_semana} salvo!`,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: { background: "#008000" },
+        }).showToast()
+      );
       setTimeout(() => setStatusMsg(""), 3000);
       setShowModal(false);
       fetchHorarios();
     } else {
-      setStatusMsg("Erro ao salvar horário");
+      setStatusMsg(
+        Toastify({
+          text: "Erro ao salvar horario: ",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: { background: "#ef4444" },
+        }).showToast()
+      );
     }
   };
 
