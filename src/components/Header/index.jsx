@@ -1,22 +1,28 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Menu, X } from "lucide-react"; // ícones (já vem do lucide-react)
+import { useNavigate } from "react-router-dom";
+import { Menu, X } from "lucide-react";
+import supabase from "../../supabaseClient";
 import logo from "../../assets/logo-white.png";
 
 function Header() {
   const [menuAberto, setMenuAberto] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/"); // redireciona para login
+  };
 
   return (
     <header className="bg-[#5A4739] h-20 flex items-center justify-between px-4 md:px-10 relative">
       {/* Logo centralizada no mobile */}
       <div className="flex-1 flex justify-center md:justify-start">
-        <Link to="/painel-pedidos">
-          <img
-            src={logo}
-            alt="Logo reluzente"
-            className="w-16 h-16 rounded-full shadow-lg hover:scale-110 duration-200 cursor-pointer"
-          />
-        </Link>
+        <img
+          src={logo}
+          alt="Logo reluzente"
+          className="w-16 h-16 rounded-full shadow-lg hover:scale-110 duration-200 cursor-pointer"
+          onClick={() => navigate("/painel-pedidos")}
+        />
       </div>
 
       {/* Botão hamburguer só no mobile */}
@@ -31,44 +37,44 @@ function Header() {
       <nav className="hidden md:block">
         <ul className="list-none flex gap-6 text-white">
           <li>
-            <Link
-              to="/adicionar-produtos"
+            <button
+              onClick={() => navigate("/adicionar-produtos")}
               className="hover:text-black hover:scale-110 hover:underline hover:shadow-lg transition-all duration-300"
             >
               Adicionar produtos
-            </Link>
+            </button>
           </li>
           <li>
-            <Link
-              to="/meu-cardapio"
+            <button
+              onClick={() => navigate("/meu-cardapio")}
               className="hover:text-black hover:scale-110 hover:underline hover:shadow-lg transition-all duration-300"
             >
               Meu cardápio
-            </Link>
+            </button>
           </li>
           <li>
-            <Link
-              to="/painel-pedidos"
+            <button
+              onClick={() => navigate("/painel-pedidos")}
               className="hover:text-black hover:scale-110 hover:underline hover:shadow-lg transition-all duration-300"
             >
               Painel de pedidos
-            </Link>
+            </button>
           </li>
           <li>
-            <Link
-              to="/horarios"
+            <button
+              onClick={() => navigate("/horarios")}
               className="hover:text-black hover:scale-110 hover:underline hover:shadow-lg transition-all duration-300"
             >
               Horarios
-            </Link>
+            </button>
           </li>
           <li>
-            <Link
-              to="/"
+            <button
+              onClick={handleLogout}
               className="hover:text-black hover:scale-110 hover:underline hover:shadow-lg transition-all duration-300"
             >
               Sair
-            </Link>
+            </button>
           </li>
         </ul>
       </nav>
@@ -95,35 +101,54 @@ function Header() {
             <nav>
               <ul className="flex flex-col gap-4 text-lg">
                 <li>
-                  <Link
-                    to="/adicionar-produtos"
-                    onClick={() => setMenuAberto(false)}
+                  <button
+                    onClick={() => {
+                      navigate("/adicionar-produtos");
+                      setMenuAberto(false);
+                    }}
                   >
                     Adicionar produtos
-                  </Link>
+                  </button>
                 </li>
                 <li>
-                  <Link to="/meu-cardapio" onClick={() => setMenuAberto(false)}>
+                  <button
+                    onClick={() => {
+                      navigate("/meu-cardapio");
+                      setMenuAberto(false);
+                    }}
+                  >
                     Meu cardápio
-                  </Link>
+                  </button>
                 </li>
                 <li>
-                  <Link
-                    to="/painel-pedidos"
-                    onClick={() => setMenuAberto(false)}
+                  <button
+                    onClick={() => {
+                      navigate("/painel-pedidos");
+                      setMenuAberto(false);
+                    }}
                   >
                     Painel de pedidos
-                  </Link>
+                  </button>
                 </li>
                 <li>
-                  <Link to="/horarios" onClick={() => setMenuAberto(false)}>
+                  <button
+                    onClick={() => {
+                      navigate("/horarios");
+                      setMenuAberto(false);
+                    }}
+                  >
                     Horarios
-                  </Link>
+                  </button>
                 </li>
                 <li>
-                  <Link to="/" onClick={() => setMenuAberto(false)}>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setMenuAberto(false);
+                    }}
+                  >
                     Sair
-                  </Link>
+                  </button>
                 </li>
               </ul>
             </nav>

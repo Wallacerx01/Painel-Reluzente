@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./AuthContext";
+import PrivateRoute from "./PrivateRoute";
 
 import Login from "./pages/Login";
 import AddProdutos from "./pages/AddProdutos";
@@ -11,20 +13,53 @@ import HandleRecoveryLink from "./HandleRecoveryLink";
 
 function RoutesApp() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/painel-pedidos" element={<PainelPedidos />} />
-        <Route path="/adicionar-produtos" element={<AddProdutos />} />
-        <Route path="/meu-cardapio" element={<MeuCardapio />} />
-        <Route path="/new-password" element={<NewPassword />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/horarios" element={<HorariosPainel />} />
-        <Route path="/recover" element={<HandleRecoveryLink />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* rotas públicas */}
+          <Route path="/" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/new-password" element={<NewPassword />} />
+          <Route path="/recover" element={<HandleRecoveryLink />} />
 
-        <Route path="*" element={<h2>Página não encontrada</h2>} />
-      </Routes>
-    </BrowserRouter>
+          {/* rotas privadas */}
+          <Route
+            path="/painel-pedidos"
+            element={
+              <PrivateRoute>
+                <PainelPedidos />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/adicionar-produtos"
+            element={
+              <PrivateRoute>
+                <AddProdutos />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/meu-cardapio"
+            element={
+              <PrivateRoute>
+                <MeuCardapio />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/horarios"
+            element={
+              <PrivateRoute>
+                <HorariosPainel />
+              </PrivateRoute>
+            }
+          />
+
+          <Route path="*" element={<h2>Página não encontrada</h2>} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
