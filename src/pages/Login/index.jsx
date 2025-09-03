@@ -38,9 +38,9 @@ function Login() {
     }
   };
 
-  // const handleGoToForgotPassword = () => {
-  //   navigate("/forgot-password");
-  // };
+  const handleGoToForgotPassword = () => {
+    navigate("/forgot-password");
+  };
 
   return (
     <main className="bg-[#B59275] w-screen h-screen flex flex-col justify-center items-center">
@@ -100,14 +100,14 @@ function Login() {
             {loading ? "Entrando..." : "Entrar"}
           </button>
 
-          {/* <button
+          <button
             type="button"
             className="cursor-pointer mt-2 text-gray-400 hover:text-gray-200
              hover:underline hover:scale-102 transition-all duration-200"
             onClick={handleGoToForgotPassword}
           >
             Esqueci minha senha
-          </button> */}
+          </button>
         </form>
       </section>
     </main>

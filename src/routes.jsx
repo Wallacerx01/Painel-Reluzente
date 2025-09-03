@@ -9,20 +9,18 @@ import MeuCardapio from "./pages/MeuCardapio";
 import ForgotPassword from "./pages/ForgotPassword";
 import NewPassword from "./pages/NewPassword";
 import HorariosPainel from "./pages/HorariosPainel";
-import HandleRecoveryLink from "./HandleRecoveryLink";
 
 function RoutesApp() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* rotas públicas */}
+          {/* públicas */}
           <Route path="/" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/new-password" element={<NewPassword />} />
-          <Route path="/recover" element={<HandleRecoveryLink />} />
 
-          {/* rotas privadas */}
+          {/* privadas */}
           <Route
             path="/painel-pedidos"
             element={

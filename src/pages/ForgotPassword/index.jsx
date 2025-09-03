@@ -12,7 +12,7 @@ function ForgotPassword() {
     setLoading(true);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://painelreluzente.vercel.app/new-password",
+      redirectTo: "https://painel-reluzente.vercel.app/new-password",
     });
 
     if (error) setMessage(error.message);
