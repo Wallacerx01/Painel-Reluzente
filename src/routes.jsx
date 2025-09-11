@@ -9,6 +9,7 @@ import MeuCardapio from "./pages/MeuCardapio";
 import ForgotPassword from "./pages/ForgotPassword";
 import NewPassword from "./pages/NewPassword";
 import HorariosPainel from "./pages/HorariosPainel";
+import Relatorios from "./pages/Relatorios";
 
 function RoutesApp() {
   return (
@@ -26,6 +27,14 @@ function RoutesApp() {
             element={
               <PrivateRoute>
                 <PainelPedidos />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/relatorios"
+            element={
+              <PrivateRoute>
+                <Relatorios />
               </PrivateRoute>
             }
           />

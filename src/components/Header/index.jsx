@@ -62,6 +62,14 @@ function Header() {
           </li>
           <li>
             <button
+              onClick={() => navigate("/relatorios")}
+              className="hover:text-black hover:scale-110 hover:underline hover:shadow-lg transition-all duration-300"
+            >
+              Relatórios
+            </button>
+          </li>
+          <li>
+            <button
               onClick={() => navigate("/horarios")}
               className="hover:text-black hover:scale-110 hover:underline hover:shadow-lg transition-all duration-300"
             >
@@ -128,6 +136,16 @@ function Header() {
                     }}
                   >
                     Painel de pedidos
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      navigate("/relatorios");
+                      setMenuAberto(false);
+                    }}
+                  >
+                    Relatórios
                   </button>
                 </li>
                 <li>

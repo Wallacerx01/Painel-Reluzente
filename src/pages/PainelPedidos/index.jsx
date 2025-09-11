@@ -4,6 +4,8 @@ import { Howl } from "howler";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import alertSound from "../../audio/alert.mp3";
+import Toastify from "toastify-js";
+import "toastify-js/src/toastify.css";
 
 const audioNovoPedidoSrc = alertSound;
 
@@ -81,6 +83,14 @@ function PainelPedidos() {
               pedidosAtuais.current.add(pedido.numero || pedido.id);
               setPedidos((prev) => [pedido, ...prev]);
               setStatusMsg("📦 Novo pedido recebido!");
+
+              Toastify({
+                text: `Novo pedido recebido!`,
+                duration: 5000,
+                gravity: "top",
+                position: "center",
+                style: { background: "#008000" },
+              }).showToast();
 
               // 🔊 Aqui usamos o ref atualizado
               tocarSom(somAtivoRef.current);
@@ -164,7 +174,7 @@ function PainelPedidos() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const umaHoraAtras = Date.now() - 60 * 60 * 1000;
+      const umaHoraAtras = Date.now() - 12 * 60 * 60 * 1000;
       setPedidos((prev) =>
         prev.filter((p) => new Date(p.created_at).getTime() >= umaHoraAtras)
       );
@@ -195,13 +205,13 @@ function PainelPedidos() {
         <h1 className="text-3xl font-bold text-center mt-6 text-gray-800">
           Painel de Pedidos
         </h1>
-        <div className="flex justify-end gap-4 mr-5">
+        <div className="flex justify-start gap-4 ml-5">
           <button
             onClick={ativarSom}
-            className={`px-3 py-1 rounded-lg shadow transition ${
+            className={`text-white px-4 py-2 rounded shadow transition ${
               somAtivo
-                ? "bg-yellow-500 hover:bg-yellow-600"
-                : "bg-green-600 hover:bg-green-700"
+                ? "bg-amber-500 hover:bg-amber-700"
+                : "bg-blue-600 hover:bg-blue-700"
             }`}
           >
             {somAtivo ? "Desativar Som" : "Ativar Som"}
