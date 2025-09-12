@@ -103,8 +103,16 @@ function Relatorios() {
       const mes = String(d.getMonth() + 1).padStart(2, "0");
       const ano = d.getFullYear();
       const chave = `${mes}/${ano}`;
-      if (!acc[chave]) acc[chave] = { mes: chave, pedidos: 0 };
+
+      if (!acc[chave]) {
+        acc[chave] = { mes: chave, pedidos: 0, faturamento: 0 };
+      }
+
       acc[chave].pedidos++;
+      acc[chave].faturamento += Number(
+        (p.total || p.valor || 0) - (p.taxa || 0)
+      );
+
       return acc;
     }, {})
   );
@@ -258,7 +266,20 @@ function Relatorios() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="mes" />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip
+                      content={({ payload }) => {
+                        if (!payload || payload.length === 0) return null;
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white border p-2 rounded shadow">
+                            <div>Pedidos: {data.pedidos}</div>
+                            <div>
+                              Faturamento: R$ {data.faturamento.toFixed(2)}
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
                     <Bar dataKey="pedidos" fill="#6b4f3a" />
                   </BarChart>
                 </ResponsiveContainer>
