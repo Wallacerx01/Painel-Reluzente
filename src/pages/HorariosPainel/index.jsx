@@ -12,20 +12,35 @@ function PainelHorarios() {
 
   const fetchHorarios = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("horarios")
-      .select("*")
-      .order("id");
 
-    if (error) setStatusMsg("Erro ao carregar horários");
-    else
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setStatusMsg("Usuário não autenticado");
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("usuario_horarios")
+      .select("horarios(*)")
+      .eq("usuario_id", user.id);
+
+    if (error) {
+      console.error(error);
+      setStatusMsg("Erro ao carregar horários");
+    } else {
       setHorarios(
-        data.map((h) => ({
+        data.map(({ horarios: h }) => ({
           ...h,
           abertura: h.abertura || "",
           fechamento: h.fechamento || "",
         }))
       );
+    }
 
     setLoading(false);
   };

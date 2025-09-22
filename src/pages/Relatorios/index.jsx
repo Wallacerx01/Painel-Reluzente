@@ -42,6 +42,7 @@ function Relatorios() {
   const [dataSelecionada, setDataSelecionada] = useState(
     new Date().toISOString().split("T")[0]
   );
+  const [userId, setUserId] = useState(null);
 
   const COLORS = [
     "#FF6B6B",
@@ -53,48 +54,88 @@ function Relatorios() {
   ];
   const COLORS_TOP5 = ["#FF3B3B", "#FF8C00", "#FFD700", "#32CD32", "#1E90FF"];
 
-  // Buscar pedidos
+  // Pega usuário logado
   useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) setUserId(session.user.id);
+    };
+
+    getUser();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user) setUserId(session.user.id);
+        else setUserId(null);
+      }
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  // Buscar pedidos do usuário logado
+  useEffect(() => {
+    if (!userId) return; // espera o usuário estar logado
+
     const fetchPedidos = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("pedidos")
-        .select("*")
-        .order("created_at", { ascending: true });
+      try {
+        // Busca pedidos do usuário logado
+        const { data: usuarioPedidos, error: upError } = await supabase
+          .from("usuario_pedidos")
+          .select("pedidos_id")
+          .eq("usuario_id", userId);
 
-      if (error) {
-        console.error("Erro ao buscar pedidos:", error);
+        if (upError) throw upError;
+
+        const pedidosIds = usuarioPedidos.map((p) => p.pedidos_id);
+
+        if (pedidosIds.length === 0) {
+          setPedidos([]);
+          setLoading(false);
+          return;
+        }
+
+        // Busca detalhes dos pedidos filtrando por IDs do usuário
+        const { data, error } = await supabase
+          .from("pedidos")
+          .select("*")
+          .in("id", pedidosIds)
+          .order("created_at", { ascending: true });
+
+        if (error) throw error;
+
+        setPedidos(data);
+
+        // Resumo do dia
+        const pedidosDoDia = data.filter(
+          (p) => p.created_at.split("T")[0] === dataSelecionada
+        );
+        const faturamentoDoDia = pedidosDoDia.reduce(
+          (acc, cur) =>
+            acc + Number((cur.total || cur.valor || 0) - (cur.taxa || 0)),
+          0
+        );
+        const ticketMedio =
+          pedidosDoDia.length > 0 ? faturamentoDoDia / pedidosDoDia.length : 0;
+
+        setResumo({
+          pedidosHoje: pedidosDoDia.length,
+          faturamentoHoje: faturamentoDoDia,
+          ticketMedio,
+        });
+
         setLoading(false);
-        return;
+      } catch (err) {
+        console.error("Erro ao buscar pedidos:", err);
+        setLoading(false);
       }
-
-      setPedidos(data);
-
-      // Resumo do dia (sem taxa do entregador)
-      const pedidosDoDia = data.filter(
-        (p) => p.created_at.split("T")[0] === dataSelecionada
-      );
-
-      const faturamentoDoDia = pedidosDoDia.reduce(
-        (acc, cur) =>
-          acc + Number((cur.total || cur.valor || 0) - (cur.taxa || 0)),
-        0
-      );
-
-      const ticketMedio =
-        pedidosDoDia.length > 0 ? faturamentoDoDia / pedidosDoDia.length : 0;
-
-      setResumo({
-        pedidosHoje: pedidosDoDia.length,
-        faturamentoHoje: faturamentoDoDia,
-        ticketMedio,
-      });
-
-      setLoading(false);
     };
 
     fetchPedidos();
-  }, [dataSelecionada]);
+  }, [userId, dataSelecionada]);
 
   // Pedidos por mês
   const pedidosPorMes = Object.values(

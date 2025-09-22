@@ -14,14 +14,38 @@ function PainelPedidos() {
   const [loading, setLoading] = useState(true);
   const [statusMsg, setStatusMsg] = useState("📡 Aguardando novos pedidos...");
   const [somAtivo, setSomAtivo] = useState(false);
+  const [userId, setUserId] = useState(null);
+
   const audioNovoPedido = useRef(null);
   const pedidosAtuais = useRef(new Set());
   const somAtivoRef = useRef(somAtivo);
 
-  // Mantém o ref atualizado com o estado do som
+  // Atualiza ref do som
   useEffect(() => {
     somAtivoRef.current = somAtivo;
   }, [somAtivo]);
+
+  // Pega usuário logado dinamicamente
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) setUserId(session.user.id);
+    };
+
+    getUser();
+
+    // Listener para mudanças de login/logout
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user) setUserId(session.user.id);
+        else setUserId(null);
+      }
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   const tocarSom = (ativo) => {
     if (ativo && audioNovoPedido.current) {
@@ -38,31 +62,62 @@ function PainelPedidos() {
       });
     }
 
-    const fetchPedidos = async () => {
+    if (!userId) return; // espera o userId estar definido
+
+    const fetchPedidosUsuario = async () => {
       try {
         const agora = new Date();
-        const umaHoraAtras = new Date(agora.getTime() - 60 * 60 * 1000);
-        const { data, error } = await supabase
+        const limite = new Date(agora.getTime() - 12 * 60 * 60 * 1000); // últimos 12 horas
+
+        // Pega os pedidos do usuário
+        const { data: usuarioPedidos, error: upError } = await supabase
+          .from("usuario_pedidos")
+          .select("pedidos_id")
+          .eq("usuario_id", userId);
+
+        if (upError) throw upError;
+
+        const pedidosIds = usuarioPedidos.map((p) => p.pedidos_id);
+
+        if (pedidosIds.length === 0) {
+          setPedidos([]);
+          setLoading(false);
+          return;
+        }
+
+        // Pega os detalhes dos pedidos já filtrando por data
+        const { data: pedidosData, error: pError } = await supabase
           .from("pedidos")
           .select("*")
+          .in("id", pedidosIds)
+          .gte("created_at", limite.toISOString()) // aqui filtramos pelo período
           .order("id", { ascending: false });
 
-        if (error) console.error("Erro ao buscar pedidos:", error);
-        else {
-          const pedidosRecentes = data.filter((pedido) => {
-            const createdAt = new Date(pedido.created_at);
-            return createdAt.getTime() >= umaHoraAtras.getTime();
-          });
-          setPedidos(pedidosRecentes);
-        }
+        if (pError) throw pError;
+
+        setPedidos(pedidosData);
+
+        // Adiciona ao Set para evitar duplicados no listener
+        pedidosData.forEach((p) => pedidosAtuais.current.add(p.numero || p.id));
+
         setLoading(false);
+
+        // Toca som no primeiro pedido, se houver
+        if (pedidosData.length > 0 && somAtivoRef.current) {
+          tocarSom(true);
+          setStatusMsg("📦 Pedido carregado!");
+          setTimeout(
+            () => setStatusMsg("📡 Aguardando novos pedidos..."),
+            3000
+          );
+        }
       } catch (err) {
         console.error(err);
         setLoading(false);
       }
     };
 
-    const escutarPedidos = async () => {
+    const escutarPedidosUsuario = async () => {
       await conectarQZ();
 
       const channel = supabase
@@ -72,6 +127,16 @@ function PainelPedidos() {
           { event: "INSERT", schema: "public", table: "pedidos" },
           async (payload) => {
             const pedido = payload.new;
+
+            const { data: usuarioPedido } = await supabase
+              .from("usuario_pedidos")
+              .select("*")
+              .eq("usuario_id", userId)
+              .eq("pedidos_id", pedido.id)
+              .single();
+
+            if (!usuarioPedido) return;
+
             const agora = new Date();
             const umaHoraAtras = new Date(agora.getTime() - 60 * 60 * 1000);
             const createdAt = new Date(pedido.created_at);
@@ -92,9 +157,7 @@ function PainelPedidos() {
                 style: { background: "#008000" },
               }).showToast();
 
-              // 🔊 Aqui usamos o ref atualizado
               tocarSom(somAtivoRef.current);
-
               await imprimirPedido(pedido);
 
               setTimeout(() => {
@@ -108,9 +171,9 @@ function PainelPedidos() {
       return () => supabase.removeChannel(channel);
     };
 
-    fetchPedidos();
-    escutarPedidos();
-  }, []);
+    fetchPedidosUsuario();
+    escutarPedidosUsuario();
+  }, [userId]);
 
   const ativarSom = () => {
     const novoEstado = !somAtivo;
@@ -145,8 +208,17 @@ function PainelPedidos() {
   };
 
   const normalizarItens = (itens) => {
-    if (Array.isArray(itens)) return itens;
-    if (typeof itens === "string") return itens.split(",").map((i) => i.trim());
+    if (Array.isArray(itens)) {
+      return itens.filter((i) => !i.trim().startsWith("0x")); // remove ingredientes zerados
+    }
+
+    if (typeof itens === "string") {
+      return itens
+        .split(",")
+        .map((i) => i.trim())
+        .filter((i) => !i.startsWith("0x")); // remove ingredientes zerados
+    }
+
     return [];
   };
 
@@ -154,20 +226,62 @@ function PainelPedidos() {
     if (typeof window.qz === "undefined") return;
 
     const config = window.qz.configs.create("POS-80");
+
+    // Normaliza itens (array ou string)
     const itensArray = normalizarItens(pedido.itens);
 
-    const html = `
-      <h2>Pedido #${pedido.numero || pedido.id}</h2>
-      <p><b>Cliente:</b> ${pedido.cliente}</p>
-      <p><b>Itens:</b></p>
-      ${itensArray.map((i) => `<p>${i}</p>`).join("")}
-      ${pedido.observacao ? `<p>Observação: ${pedido.observacao}</p>` : ""}
-      <p>Forma de pagamento: ${pedido.pagamento}</p>
-      <p>Taxa de entrega: R$${pedido.taxa.toFixed(2)}</p>
-      <p>Total: R$${Number(pedido.total).toFixed(2)}</p>
-      ${pedido.endereco ? `<p>Endereço: ${pedido.endereco}</p>` : ""}
-    `;
+    // Formata cada item no estilo cartItems
+    const itensFormatados = itensArray
+      .map((item) => {
+        const linhas = item.split("\n");
 
+        const produto = linhas[0]; // primeira linha = produto
+        const ingredientes = [];
+
+        for (let i = 1; i < linhas.length; i++) {
+          const linha = linhas[i].trim();
+
+          if (!linha) continue;
+
+          if (linha.toLowerCase().startsWith("obs:")) {
+            // ignora a linha de observação (mas não corta o resto)
+            continue;
+          }
+
+          ingredientes.push(linha);
+        }
+
+        return [produto, ...ingredientes].join("<br>");
+      })
+      .join("<br><br>");
+
+    // Extrair somente o texto depois de "Obs:"
+    let somenteObs = "";
+    if (pedido.observacao) {
+      const match = pedido.observacao.match(/Obs:\s*(.*)/i);
+      if (match) {
+        somenteObs = match[1].trim();
+      }
+    }
+    // Monta recibo
+    const html = `
+<h2>Pedido: ${pedido.numero || pedido.id}</h2>
+
+
+<p><b>Cliente:</b> ${pedido.cliente}</p>
+<p><b>Itens:</b><p>
+
+${itensFormatados}
+
+<p>${somenteObs ? `Obs: ${somenteObs}\n\n` : ""}</p>
+
+<p>Forma de pagamento: ${pedido.pagamento}</p>
+<p>Taxa de entrega: R$${Number(pedido.taxa).toFixed(2)}</p>
+<p>Total: R$${Number(pedido.total).toFixed(2)}</p>
+<p>${pedido.endereco ? `<p>Endereço: ${pedido.endereco}</p>` : ""}
+`;
+
+    // Envia para impressão como texto cru (plain)
     const data = [{ type: "html", format: "plain", data: html }];
     await window.qz.print(config, data).catch((err) => console.error(err));
   };
@@ -253,10 +367,13 @@ function PainelPedidos() {
                 </p>
                 <ul className="ml-4 list-disc">
                   {Array.isArray(pedido.itens)
-                    ? pedido.itens.map((item, idx) => <li key={idx}>{item}</li>)
+                    ? pedido.itens
+                        .filter((item) => !item.trim().startsWith("0x")) // remove ingredientes zerados
+                        .map((item, idx) => <li key={idx}>{item}</li>)
                     : pedido.itens
                     ? pedido.itens
-                        .split(",")
+                        .split("\n") // quebra por linha, já que vem formatado
+                        .filter((item) => !item.trim().startsWith("0x")) // remove "0x"
                         .map((item, idx) => <li key={idx}>{item.trim()}</li>)
                     : "Nenhum item"}
                 </ul>

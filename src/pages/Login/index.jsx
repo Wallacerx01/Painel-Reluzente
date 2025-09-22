@@ -12,6 +12,70 @@ function Login() {
   const [successMsg, setSuccessMsg] = useState("");
   const navigate = useNavigate();
 
+  const criarHorariosPadraoSeNaoExistirem = async (userId) => {
+    // Verifica se já existem horários vinculados a este usuário
+    const { data: existentes, error: erroBusca } = await supabase
+      .from("usuario_horarios")
+      .select("id")
+      .eq("usuario_id", userId);
+
+    if (erroBusca) {
+      console.error("Erro ao verificar horários existentes:", erroBusca);
+      return;
+    }
+
+    if (existentes.length > 0) {
+      // Se já existem, não faz nada
+      return;
+    }
+
+    const dias = [
+      "Segunda",
+      "Terça",
+      "Quarta",
+      "Quinta",
+      "Sexta",
+      "Sábado",
+      "Domingo",
+    ];
+
+    for (const dia of dias) {
+      const { data: horario, error: erroHorario } = await supabase
+        .from("horarios")
+        .insert([
+          {
+            dia_semana: dia,
+            abertura: "10:00",
+            fechamento: "14:30",
+            ativo: true,
+          },
+        ])
+        .select()
+        .single();
+
+      if (erroHorario) {
+        console.error(`Erro ao criar horário para ${dia}:`, erroHorario);
+        continue;
+      }
+
+      const { error: erroVinculo } = await supabase
+        .from("usuario_horarios")
+        .insert([
+          {
+            usuario_id: userId,
+            horario_id: horario.id,
+          },
+        ]);
+
+      if (erroVinculo) {
+        console.error(
+          `Erro ao vincular horário de ${dia} ao usuário:`,
+          erroVinculo
+        );
+      }
+    }
+  };
+
   // --- LOGIN ---
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -28,6 +92,7 @@ function Login() {
       if (error) {
         setErrorMsg(error.message);
       } else if (data.user) {
+        await criarHorariosPadraoSeNaoExistirem(data.user.id);
         navigate("/painel-pedidos");
       }
     } catch (err) {
