@@ -53,6 +53,7 @@ function PainelPedidos() {
     }
   };
 
+  // ------------------ USE EFFECT AJUSTADO PARA PEDIDOS ------------------
   useEffect(() => {
     if (!audioNovoPedido.current) {
       audioNovoPedido.current = new Howl({
@@ -62,6 +63,8 @@ function PainelPedidos() {
     }
 
     if (!userId) return;
+
+    let canalPedidos;
 
     const fetchPedidosUsuario = async () => {
       try {
@@ -91,11 +94,18 @@ function PainelPedidos() {
 
         if (pError) throw pError;
 
-        setPedidos(pedidosData);
-        pedidosData.forEach((p) => pedidosAtuais.current.add(p.numero || p.id));
+        // Filtra apenas pedidos que ainda não estão no Set
+        const novosPedidos = pedidosData.filter(
+          (p) => !pedidosAtuais.current.has(p.numero || p.id)
+        );
+        novosPedidos.forEach((p) =>
+          pedidosAtuais.current.add(p.numero || p.id)
+        );
+
+        setPedidos((prev) => [...novosPedidos, ...prev]);
         setLoading(false);
 
-        if (pedidosData.length > 0 && somAtivoRef.current) {
+        if (novosPedidos.length > 0 && somAtivoRef.current) {
           tocarSom(true);
           setStatusMsg("📦 Pedido carregado!");
           setTimeout(
@@ -109,8 +119,8 @@ function PainelPedidos() {
       }
     };
 
-    const escutarPedidosUsuario = async () => {
-      const channel = supabase
+    const escutarPedidosUsuario = () => {
+      canalPedidos = supabase
         .channel("pedidos-listener")
         .on(
           "postgres_changes",
@@ -157,14 +167,18 @@ function PainelPedidos() {
           }
         )
         .subscribe();
-
-      return () => supabase.removeChannel(channel);
     };
 
     fetchPedidosUsuario();
     escutarPedidosUsuario();
+
+    // Cleanup do canal ao desmontar ou trocar userId
+    return () => {
+      if (canalPedidos) supabase.removeChannel(canalPedidos);
+    };
   }, [userId]);
 
+  // ------------------ FUNÇÃO ATIVAR SOM ------------------
   const ativarSom = () => {
     const novoEstado = !somAtivo;
     setSomAtivo(novoEstado);
@@ -180,11 +194,11 @@ function PainelPedidos() {
     }, 3000);
   };
 
-  // ------------------ NOVA FUNÇÃO DE IMPRESSÃO VIA agent.py ------------------
+  // ------------------ FUNÇÃO IMPRESSÃO VIA agent.py ------------------
   const removerAcentos = (str) => {
     return str
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // remove acentos
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/ç/g, "c")
       .replace(/Ç/g, "C");
   };
@@ -196,7 +210,6 @@ function PainelPedidos() {
       ws.onopen = () => {
         console.log("✅ Conectado ao agente Python");
 
-        // Normaliza itens (remove "0x" e linhas de Obs:)
         const itensArray = Array.isArray(pedido.itens)
           ? pedido.itens.filter((i) => !i.trim().startsWith("0x"))
           : pedido.itens
@@ -207,21 +220,19 @@ function PainelPedidos() {
           .map((item) => {
             const linhas = item
               .split("\n")
-              .filter((l) => !/^Obs:/i.test(l.trim())); // remove Obs:
+              .filter((l) => !/^Obs:/i.test(l.trim()));
             const produto = linhas[0];
             const ingredientes = linhas.slice(1).filter((l) => l.trim() !== "");
             return [produto, ...ingredientes].join("\n");
           })
           .join("\n");
 
-        // Observações
         let somenteObs = "";
         if (pedido.observacao) {
           const match = pedido.observacao.match(/Obs:\s*(.*)/i);
           if (match) somenteObs = match[1].trim();
         }
 
-        // Texto principal sem acentos
         let texto = `
 Cliente: ${pedido.cliente}
 
@@ -239,10 +250,8 @@ Taxa de entrega: R$${Number(pedido.taxa).toFixed(2)}
 Total: R$${Number(pedido.total).toFixed(2)}
 ${pedido.endereco ? `Endereço: ${pedido.endereco}\n` : ""}`;
 
-        // Remove acentos antes de enviar
         texto = removerAcentos(texto);
 
-        // Envia para o Python, número do pedido separado
         ws.send(JSON.stringify({ texto, numero: pedido.numero || pedido.id }));
 
         ws.onmessage = (msg) => {
@@ -257,8 +266,7 @@ ${pedido.endereco ? `Endereço: ${pedido.endereco}\n` : ""}`;
     }
   };
 
-  // ---------------------------------------------------------------------------
-
+  // ------------------ FILTRO DE PEDIDOS MAIS ANTIGOS ------------------
   useEffect(() => {
     const interval = setInterval(() => {
       const umaHoraAtras = Date.now() - 12 * 60 * 60 * 1000;
@@ -270,6 +278,7 @@ ${pedido.endereco ? `Endereço: ${pedido.endereco}\n` : ""}`;
     return () => clearInterval(interval);
   }, []);
 
+  // ------------------ FORMATAÇÃO DE DATA/HORA ------------------
   const formatarHora = (data) => {
     const d = new Date(data);
     return d.toLocaleTimeString("pt-BR", {
