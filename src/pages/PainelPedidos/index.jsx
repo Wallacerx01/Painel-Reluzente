@@ -36,7 +36,6 @@ function PainelPedidos() {
 
     getUser();
 
-    // Listener para mudanças de login/logout
     const { data: listener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (session?.user) setUserId(session.user.id);
@@ -62,14 +61,13 @@ function PainelPedidos() {
       });
     }
 
-    if (!userId) return; // espera o userId estar definido
+    if (!userId) return;
 
     const fetchPedidosUsuario = async () => {
       try {
         const agora = new Date();
-        const limite = new Date(agora.getTime() - 12 * 60 * 60 * 1000); // últimos 12 horas
+        const limite = new Date(agora.getTime() - 12 * 60 * 60 * 1000);
 
-        // Pega os pedidos do usuário
         const { data: usuarioPedidos, error: upError } = await supabase
           .from("usuario_pedidos")
           .select("pedidos_id")
@@ -78,31 +76,25 @@ function PainelPedidos() {
         if (upError) throw upError;
 
         const pedidosIds = usuarioPedidos.map((p) => p.pedidos_id);
-
         if (pedidosIds.length === 0) {
           setPedidos([]);
           setLoading(false);
           return;
         }
 
-        // Pega os detalhes dos pedidos já filtrando por data
         const { data: pedidosData, error: pError } = await supabase
           .from("pedidos")
           .select("*")
           .in("id", pedidosIds)
-          .gte("created_at", limite.toISOString()) // aqui filtramos pelo período
+          .gte("created_at", limite.toISOString())
           .order("id", { ascending: false });
 
         if (pError) throw pError;
 
         setPedidos(pedidosData);
-
-        // Adiciona ao Set para evitar duplicados no listener
         pedidosData.forEach((p) => pedidosAtuais.current.add(p.numero || p.id));
-
         setLoading(false);
 
-        // Toca som no primeiro pedido, se houver
         if (pedidosData.length > 0 && somAtivoRef.current) {
           tocarSom(true);
           setStatusMsg("📦 Pedido carregado!");
@@ -118,8 +110,6 @@ function PainelPedidos() {
     };
 
     const escutarPedidosUsuario = async () => {
-      await conectarQZ();
-
       const channel = supabase
         .channel("pedidos-listener")
         .on(
@@ -158,7 +148,7 @@ function PainelPedidos() {
               }).showToast();
 
               tocarSom(somAtivoRef.current);
-              await imprimirPedido(pedido);
+              await imprimirPedidoWS(pedido);
 
               setTimeout(() => {
                 setStatusMsg("📡 Aguardando novos pedidos...");
@@ -180,7 +170,7 @@ function PainelPedidos() {
     setSomAtivo(novoEstado);
     if (novoEstado) {
       setStatusMsg("🔊 Som ativado com sucesso!");
-      tocarSom(novoEstado); // toca imediatamente
+      tocarSom(novoEstado);
     } else {
       setStatusMsg("🔇 Som desativado!");
     }
@@ -190,101 +180,84 @@ function PainelPedidos() {
     }, 3000);
   };
 
-  const conectarQZ = async () => {
-    let tentativas = 0;
-    while (typeof window.qz === "undefined" || !window.qz.websocket) {
-      await new Promise((r) => setTimeout(r, 100));
-      tentativas++;
-      if (tentativas > 50) {
-        console.error("QZ Tray não disponível");
-        return false;
-      }
-    }
-    if (!window.qz.websocket.isActive()) {
-      await window.qz.websocket.connect();
-      console.log("✅ Conectado ao QZ Tray");
-    }
-    return true;
+  // ------------------ NOVA FUNÇÃO DE IMPRESSÃO VIA agent.py ------------------
+  const removerAcentos = (str) => {
+    return str
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // remove acentos
+      .replace(/ç/g, "c")
+      .replace(/Ç/g, "C");
   };
 
-  const normalizarItens = (itens) => {
-    if (Array.isArray(itens)) {
-      return itens.filter((i) => !i.trim().startsWith("0x")); // remove ingredientes zerados
-    }
+  const imprimirPedidoWS = async (pedido) => {
+    try {
+      const ws = new WebSocket("ws://localhost:12345");
 
-    if (typeof itens === "string") {
-      return itens
-        .split(",")
-        .map((i) => i.trim())
-        .filter((i) => !i.startsWith("0x")); // remove ingredientes zerados
-    }
+      ws.onopen = () => {
+        console.log("✅ Conectado ao agente Python");
 
-    return [];
-  };
+        // Normaliza itens (remove "0x" e linhas de Obs:)
+        const itensArray = Array.isArray(pedido.itens)
+          ? pedido.itens.filter((i) => !i.trim().startsWith("0x"))
+          : pedido.itens
+          ? pedido.itens.split("\n").filter((i) => !i.trim().startsWith("0x"))
+          : [];
 
-  const imprimirPedido = async (pedido) => {
-    if (typeof window.qz === "undefined") return;
+        const itensFormatados = itensArray
+          .map((item) => {
+            const linhas = item
+              .split("\n")
+              .filter((l) => !/^Obs:/i.test(l.trim())); // remove Obs:
+            const produto = linhas[0];
+            const ingredientes = linhas.slice(1).filter((l) => l.trim() !== "");
+            return [produto, ...ingredientes].join("\n");
+          })
+          .join("\n");
 
-    const config = window.qz.configs.create("POS-80");
-
-    // Normaliza itens (array ou string)
-    const itensArray = normalizarItens(pedido.itens);
-
-    // Formata cada item no estilo cartItems
-    const itensFormatados = itensArray
-      .map((item) => {
-        const linhas = item.split("\n");
-
-        const produto = linhas[0]; // primeira linha = produto
-        const ingredientes = [];
-
-        for (let i = 1; i < linhas.length; i++) {
-          const linha = linhas[i].trim();
-
-          if (!linha) continue;
-
-          if (linha.toLowerCase().startsWith("obs:")) {
-            // ignora a linha de observação (mas não corta o resto)
-            continue;
-          }
-
-          ingredientes.push(linha);
+        // Observações
+        let somenteObs = "";
+        if (pedido.observacao) {
+          const match = pedido.observacao.match(/Obs:\s*(.*)/i);
+          if (match) somenteObs = match[1].trim();
         }
 
-        return [produto, ...ingredientes].join("<br>");
-      })
-      .join("<br><br>");
+        // Texto principal sem acentos
+        let texto = `
+Cliente: ${pedido.cliente}
 
-    // Extrair somente o texto depois de "Obs:"
-    let somenteObs = "";
-    if (pedido.observacao) {
-      const match = pedido.observacao.match(/Obs:\s*(.*)/i);
-      if (match) {
-        somenteObs = match[1].trim();
-      }
-    }
-    // Monta recibo
-    const html = `
-<h2>Pedido: ${pedido.numero || pedido.id}</h2>
-
-
-<p><b>Cliente:</b> ${pedido.cliente}</p>
-<p><b>Itens:</b><p>
-
+Itens:
 ${itensFormatados}
-
-<p>${somenteObs ? `Obs: ${somenteObs}\n\n` : ""}</p>
-
-<p>Forma de pagamento: ${pedido.pagamento}</p>
-<p>Taxa de entrega: R$${Number(pedido.taxa).toFixed(2)}</p>
-<p>Total: R$${Number(pedido.total).toFixed(2)}</p>
-<p>${pedido.endereco ? `<p>Endereço: ${pedido.endereco}</p>` : ""}
 `;
 
-    // Envia para impressão como texto cru (plain)
-    const data = [{ type: "html", format: "plain", data: html }];
-    await window.qz.print(config, data).catch((err) => console.error(err));
+        if (somenteObs) {
+          texto += `Obs: ${somenteObs}\n`;
+        }
+
+        texto += `
+Forma de pagamento: ${pedido.pagamento}
+Taxa de entrega: R$${Number(pedido.taxa).toFixed(2)}
+Total: R$${Number(pedido.total).toFixed(2)}
+${pedido.endereco ? `Endereço: ${pedido.endereco}\n` : ""}`;
+
+        // Remove acentos antes de enviar
+        texto = removerAcentos(texto);
+
+        // Envia para o Python, número do pedido separado
+        ws.send(JSON.stringify({ texto, numero: pedido.numero || pedido.id }));
+
+        ws.onmessage = (msg) => {
+          console.log("Resposta do agente:", msg.data);
+          ws.close();
+        };
+      };
+
+      ws.onerror = (err) => console.error("Erro na conexão WebSocket:", err);
+    } catch (err) {
+      console.error("Erro ao imprimir via WebSocket:", err);
+    }
   };
+
+  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -307,8 +280,8 @@ ${itensFormatados}
   const formatarData = (data) => {
     const d = new Date(data);
     const dia = String(d.getDate()).padStart(2, "0");
-    const mes = String(d.getMonth() + 1).padStart(2, "0"); // meses começam do 0
-    const ano = String(d.getFullYear()).slice(-2); // pega os dois últimos dígitos
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const ano = String(d.getFullYear()).slice(-2);
     return `${dia}/${mes}/${ano}`;
   };
 
@@ -347,7 +320,6 @@ ${itensFormatados}
                 key={pedido.id}
                 className="p-4 bg-white shadow rounded-lg border border-gray-200"
               >
-                {" "}
                 <div className="flex gap-10">
                   <p>
                     <span className="font-bold">🕒 Hora:</span>{" "}
@@ -368,12 +340,12 @@ ${itensFormatados}
                 <ul className="ml-4 list-disc">
                   {Array.isArray(pedido.itens)
                     ? pedido.itens
-                        .filter((item) => !item.trim().startsWith("0x")) // remove ingredientes zerados
+                        .filter((item) => !item.trim().startsWith("0x"))
                         .map((item, idx) => <li key={idx}>{item}</li>)
                     : pedido.itens
                     ? pedido.itens
-                        .split("\n") // quebra por linha, já que vem formatado
-                        .filter((item) => !item.trim().startsWith("0x")) // remove "0x"
+                        .split("\n")
+                        .filter((item) => !item.trim().startsWith("0x"))
                         .map((item, idx) => <li key={idx}>{item.trim()}</li>)
                     : "Nenhum item"}
                 </ul>
@@ -382,7 +354,7 @@ ${itensFormatados}
                   {pedido.pagamento}
                 </p>
                 <button
-                  onClick={() => imprimirPedido(pedido)}
+                  onClick={() => imprimirPedidoWS(pedido)}
                   className="mt-3 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   🖨️ Imprimir Manualmente
